@@ -1,3 +1,3 @@
 <div>
-  This plugin sends a http request to an url with some parameters
+  This plugin integrates queries testrails to create new test plans from previous test plans
 </div>

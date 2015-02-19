@@ -1,0 +1,53 @@
+/*******************************************************************************
+ * Copyright   : MIT License
+ * Author      : James Chapman testrail-plugin@mtbfr.co.uk
+ * Date        : 17/02/2015
+ * Description : testrail build.gradle
+ *******************************************************************************/
+
+apply plugin: 'org.jenkins-ci.jpi'
+
+[
+        'BUILDMAJORVERSION' : 1,
+        'BUILDMINORVERSION' : 0,
+        'BUILDPATCHVERSION' : 0,
+        'BUILDNUMBER'       : 'SNAPSHOT',
+].each { k,v -> project.hasProperty(k) ?: (project.ext."${k}" = v)}
+
+group = "org.jenkins-ci.plugins"
+version="${BUILDMAJORVERSION}.${BUILDMINORVERSION}.${BUILDPATCHVERSION}-${BUILDNUMBER}"
+description = "TestRail integration plugin"
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'org.jenkins-ci.tools:gradle-jpi-plugin:0.9.1'
+    }
+}
+
+dependencies {
+    compile group: "org.apache.httpcomponents", name: "httpclient", version: "4.2.2";
+    compile group: "org.slf4j", name: "slf4j-api", version: "1.7.5";
+    compile "com.googlecode.json-simple:json-simple:1.1.1";
+
+    testCompile group: "junit", name: "junit", version: "4.11"
+}
+
+jenkinsPlugin {
+    coreVersion = '1.509.4'                                             // Version of Jenkins core this plugin depends on.
+    displayName = 'TestRail Plugin built with Gradle   '                // Human-readable name of plugin.
+    url = 'http://wiki.jenkins-ci.org/display/JENKINS/TestRail'         // URL for plugin on Jenkins wiki or elsewhere.
+    gitHubUrl = 'https://github.com/jenkinsci/testrail-plugin'                // Plugin URL on GitHub. Optional.
+
+    // The developers section is optional, and corresponds to the POM developers section.
+    developers {
+        developer {
+            id 'jchapman'
+            name 'James Chapman'
+            email 'testrail-plugin@mtbfr.co.uk'
+        }
+    }
+}
+

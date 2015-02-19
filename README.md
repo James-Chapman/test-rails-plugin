@@ -1,2 +1,2 @@
-# test-rails-plugin
-Jenkins plugin to integrate with test-rails
+# testrail-plugin
+Jenkins plugin to integrate with TestRail

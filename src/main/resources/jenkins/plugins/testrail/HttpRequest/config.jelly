@@ -1,13 +1,17 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-    <f:entry field="url" title="URL">
+    <f:entry field="getPlanUrl" title="get_plan URL">
+        <f:textbox />
+    </f:entry>
+
+    <f:entry field="getTestsUrl" title="get_tests URL">
+        <f:textbox />
+    </f:entry>
+
+    <f:entry field="newPlanPostUrl" title="New plan POST URL">
         <f:textbox />
     </f:entry>
 
     <f:entry field="httpMode" title="HTTP mode">
-        <f:select />
-    </f:entry>
-
-    <f:entry field="authentication" title="Authenticate">
         <f:select />
     </f:entry>
 

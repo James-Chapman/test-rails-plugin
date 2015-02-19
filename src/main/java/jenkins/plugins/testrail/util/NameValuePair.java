@@ -1,4 +1,4 @@
-package jenkins.plugins.http_request.util;
+package jenkins.plugins.testrail.util;
 
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;

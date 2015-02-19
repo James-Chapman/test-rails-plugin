@@ -1,4 +1,4 @@
-package jenkins.plugins.http_request.util;
+package jenkins.plugins.testrail.util;
 
 import java.io.*;
 import java.net.URI;
@@ -7,8 +7,7 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 
 import hudson.FilePath;
-import hudson.util.IOUtils;
-import jenkins.plugins.http_request.HttpMode;
+import jenkins.plugins.testrail.HttpMode;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -105,21 +104,25 @@ public class HttpClientUtil {
         return httpDelete;
     }
 
-    public HttpResponse execute(DefaultHttpClient client, HttpRequestBase method,
+    public String execute(DefaultHttpClient client, HttpRequestBase method,
             PrintStream logger, boolean consolLogResponseBody) throws IOException, InterruptedException {
 
         doSecurity(client, method.getURI());
         logger.println("Sending request to url: " + method.getURI());
         final HttpResponse httpResponse = client.execute(method);
         logger.println("Response Code: " + httpResponse.getStatusLine());
-        String httpData = EntityUtils.toString(httpResponse.getEntity());
-        if (consolLogResponseBody) {
-            logger.println("Response: \n" + httpData);
+        if (httpResponse.getStatusLine().getStatusCode() == 200) {
+            String httpData = EntityUtils.toString(httpResponse.getEntity());
+            if (consolLogResponseBody) {
+                logger.println("Response: \n" + httpData);
+            }
+            outputFilePath.write().write(httpData.getBytes());
+            EntityUtils.consume(httpResponse.getEntity());
+            return httpData;
         }
-        outputFilePath.write().write(httpData.getBytes());
-        EntityUtils.consume(httpResponse.getEntity());
-
-        return httpResponse;
+        else {
+            return null;
+        }
     }
 
     private void doSecurity(DefaultHttpClient base, URI uri) throws IOException {
