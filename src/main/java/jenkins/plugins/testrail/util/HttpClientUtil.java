@@ -7,19 +7,16 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 
 import hudson.FilePath;
-import jenkins.plugins.testrail.HttpMode;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.TrustStrategy;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 
@@ -38,94 +35,83 @@ public class HttpClientUtil {
         this.outputFilePath = filePath;
     }
 
-
-    public HttpRequestBase createRequestBase(RequestAction requestAction) throws
-            UnsupportedEncodingException, IOException {
-
-        if (requestAction.getMode() == HttpMode.GET) {
-            return makeGet(requestAction);
-
-        } else if (requestAction.getMode() == HttpMode.POST) {
-            return makePost(requestAction);
-
-        } else if (requestAction.getMode() == HttpMode.PUT) {
-            return makePut(requestAction);
-
-        } else if (requestAction.getMode() == HttpMode.DELETE) {
-            return makeDelete(requestAction);
-        }
-
-        return makePost(requestAction);
-    }
-
     private HttpEntity makeEntity(List<NameValuePair> params) throws
             UnsupportedEncodingException {
         return new UrlEncodedFormEntity(params);
     }
 
-    public HttpGet makeGet(RequestAction requestAction) throws
-            UnsupportedEncodingException, IOException {
-        final String url = requestAction.getUrl().toString();
-        final StringBuilder sb = new StringBuilder(url);
+    public String executeGet(DefaultHttpClient httpClient, String authentication, String customHeader, String getUrl,
+                             PrintStream logger, boolean consolLogResponseBody) throws IOException, InterruptedException {
 
-        if (!requestAction.getParams().isEmpty()) {
-            sb.append(url.contains("?") ? "&" : "?");
-            final HttpEntity entity = makeEntity(requestAction.getParams());
-
-            final BufferedReader br = new BufferedReader(new InputStreamReader(entity.getContent()));
-            String s;
-            while ((s = br.readLine()) != null) {
-                sb.append(s);
+        String returnData = null;
+        try {
+            URI uri = new URI(getUrl);
+            doSecurity(httpClient, uri);
+            HttpGet request = new HttpGet(uri);
+            request.addHeader("accept", "application/json");
+            request.addHeader("content-type", "application/json");
+            if(authentication != null && !authentication.isEmpty()) {
+                String[] parts = authentication.split(":");
+                request.addHeader(parts[0], parts[1]);
             }
-        }
-        return new HttpGet(sb.toString());
-    }
-
-    public HttpPost makePost(RequestAction requestAction) throws UnsupportedEncodingException {
-        final HttpEntity httpEntity = makeEntity(requestAction.getParams());
-        final HttpPost httpPost = new HttpPost(requestAction.getUrl().toString());
-        httpPost.setEntity(httpEntity);
-
-        return httpPost;
-    }
-
-    public HttpPut makePut(RequestAction requestAction) throws UnsupportedEncodingException {
-        final HttpEntity entity = makeEntity(requestAction.getParams());
-        final HttpPut httpPut = new HttpPut(requestAction.getUrl().toString());
-        httpPut.setEntity(entity);
-
-        return httpPut;
-    }
-
-    public HttpDelete makeDelete(RequestAction requestAction) throws UnsupportedEncodingException {
-        final HttpEntity httpEntity = makeEntity(requestAction.getParams());
-        final HttpDelete httpDelete = new HttpDelete(requestAction.getUrl().toString());
-
-        return httpDelete;
-    }
-
-    public String execute(DefaultHttpClient client, HttpRequestBase method,
-            PrintStream logger, boolean consolLogResponseBody) throws IOException, InterruptedException {
-
-        doSecurity(client, method.getURI());
-        logger.println("Sending request to url: " + method.getURI());
-        final HttpResponse httpResponse = client.execute(method);
-        logger.println("Response Code: " + httpResponse.getStatusLine());
-        if (httpResponse.getStatusLine().getStatusCode() == 200) {
-            String httpData = EntityUtils.toString(httpResponse.getEntity());
-            if (consolLogResponseBody) {
-                logger.println("Response: \n" + httpData);
+            if(customHeader != null && !customHeader.isEmpty()) {
+                String[] parts = customHeader.split(":");
+                request.addHeader(parts[0], parts[1]);
             }
-            outputFilePath.write().write(httpData.getBytes());
-            EntityUtils.consume(httpResponse.getEntity());
-            return httpData;
-        }
-        else {
-            return null;
+            HttpResponse httpResponse = httpClient.execute(request);
+            logger.println("HTTP response: " + httpResponse.toString());
+            if (httpResponse.getStatusLine().getStatusCode() == 200) {
+                returnData = EntityUtils.toString(httpResponse.getEntity());
+                if (consolLogResponseBody) {
+                    logger.println("Response: \n" + returnData);
+                }
+                outputFilePath.write().write(returnData.getBytes());
+                EntityUtils.consume(httpResponse.getEntity());
+            }
+
+        } catch (Exception ex) {
+            logger.println("Caught exception... " + ex.getMessage());
+            ex.printStackTrace();
+        } finally {
+            //httpClient.getConnectionManager().shutdown();
+            return returnData;
         }
     }
 
-    private void doSecurity(DefaultHttpClient base, URI uri) throws IOException {
+
+    public int executePost(DefaultHttpClient httpClient, String authentication, String customHeader, String postUrl,
+                             PrintStream logger, String postContent) throws IOException, InterruptedException {
+
+        int status = 0;
+        try {
+            URI uri = new URI(postUrl);
+            doSecurity(httpClient, uri);
+            HttpPost request = new HttpPost(uri);
+            StringEntity params = new StringEntity(postContent);
+            request.addHeader("content-type", "application/json");
+            if(authentication != null && !authentication.isEmpty()) {
+                String[] parts = authentication.split(":");
+                request.addHeader(parts[0], parts[1]);
+            }
+            if(customHeader != null && !customHeader.isEmpty()) {
+                String[] parts = customHeader.split(":");
+                request.addHeader(parts[0], parts[1]);
+            }
+            request.setEntity(params);
+            HttpResponse response = httpClient.execute(request);
+            logger.println("HTTP response: " + response.toString());
+            status = response.getStatusLine().getStatusCode();
+        } catch (Exception ex) {
+            logger.println("Caught exception.. ." + ex.getMessage());
+            logger.println(ex.getStackTrace().toString());
+        } finally {
+            httpClient.getConnectionManager().shutdown();
+        }
+
+        return status;
+    }
+
+    private void doSecurity(DefaultHttpClient httpClient, URI uri) throws IOException {
         if (!uri.getScheme().equals("https")) {
             return;
         }
@@ -138,7 +124,7 @@ public class HttpClientUtil {
                 }
             }, SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
 
-            final SchemeRegistry schemeRegistry = base.getConnectionManager().getSchemeRegistry();
+            final SchemeRegistry schemeRegistry = httpClient.getConnectionManager().getSchemeRegistry();
             final int port = uri.getPort() < 0 ? 443 : uri.getPort();
             schemeRegistry.register(new Scheme(uri.getScheme(), port, ssf));
         } catch (Exception ex) {

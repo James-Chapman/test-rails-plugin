@@ -149,4 +149,24 @@ public class TestRailJsonParser {
         return this.newTestPlanJsonString;
     }
 
+
+    /**
+     *
+     * @param json
+     * @return
+     */
+    public String getProjectId(String json) {
+        List<String> returnList = new ArrayList<String>();
+        System.out.println("Parsing json");
+        try {
+            JSONObject rootJsonObject = (JSONObject)new JSONParser().parse(json);
+            return rootJsonObject.get("project_id").toString();
+        } catch (ParseException pe) {
+            System.out.println("Exception caught: " + pe.getPosition());
+            System.out.println(pe);
+        }
+
+        return null;
+    }
+
 }
