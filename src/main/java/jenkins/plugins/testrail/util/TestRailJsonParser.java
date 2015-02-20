@@ -88,7 +88,6 @@ public class TestRailJsonParser {
         JSONArray newEntriesArray = new JSONArray();
         JSONArray oldEntriesArray = (JSONArray)oldRootJsonObject.get("entries");
         for (Object oldEntryObject : oldEntriesArray) {
-            LOGGER.debug("entry: " + oldEntryObject.toString());
             JSONObject oldEntryJsonObject = (JSONObject)oldEntryObject;
             JSONObject newEntryJsonObject = new JSONObject();
 
@@ -98,7 +97,6 @@ public class TestRailJsonParser {
             JSONArray newCaseIdsArray = new JSONArray();
             JSONArray newConfigIdsArray = new JSONArray();
 
-            LOGGER.debug("Parsing runs...");
             JSONArray oldRunsJsonArray = (JSONArray)oldEntryJsonObject.get("runs");
             JSONArray newRunsJsonArray = new JSONArray();
             for (Object oldRunObj : oldRunsJsonArray) {
@@ -111,28 +109,22 @@ public class TestRailJsonParser {
                 JSONArray testJsonArray = (JSONArray)new JSONParser().parse(oldPlanTestsJson.get(testId));
                 for (Object testObject : testJsonArray) {
                     JSONObject testJsonObject = (JSONObject)testObject;
-                    LOGGER.debug("case_id: " + testJsonObject.get("case_id"));
                     newCaseIdsArray.add(testJsonObject.get("case_id"));
                     newRunCaseIdsArray.add(testJsonObject.get("case_id"));
                 }
                 JSONArray oldConfigIdsJsonArray = (JSONArray)oldRunJsonObj.get("config_ids");
-                LOGGER.debug("oldConfigIdsJsonArray: " + oldConfigIdsJsonArray.toJSONString());
                 for (Object configIdObject : oldConfigIdsJsonArray) {
                     final String configIdString = configIdObject.toString();
-                    LOGGER.debug("config_id: " + configIdString);
                     newConfigIdsArray.add(configIdString);
                     newRunConfigIdsArray.add(configIdString);
                 }
-                LOGGER.debug("putting data into run...");
                 newRunJsonObj.put("include_all", false);
                 newRunJsonObj.put("assignedto_id", null);
                 newRunJsonObj.put("case_ids", newRunCaseIdsArray);
                 newRunJsonObj.put("config_ids", newRunConfigIdsArray);
 
-                LOGGER.debug("putting run into runs...");
                 newRunsJsonArray.add(newRunJsonObj);
             }
-            LOGGER.debug("putting data into entry...");
             newEntryJsonObject.put("case_ids", newCaseIdsArray);
             newEntryJsonObject.put("config_ids", newConfigIdsArray);
             newEntryJsonObject.put("runs", newRunsJsonArray);
@@ -140,7 +132,6 @@ public class TestRailJsonParser {
             newEntriesArray.add(newEntryJsonObject);
 
         }
-        LOGGER.debug("putting entries into root...");
         // Insert new "entries" array
         this.newTestPlanJsonObject.put("entries", newEntriesArray);
 
@@ -161,6 +152,25 @@ public class TestRailJsonParser {
         try {
             JSONObject rootJsonObject = (JSONObject)new JSONParser().parse(json);
             return rootJsonObject.get("project_id").toString();
+        } catch (ParseException pe) {
+            System.out.println("Exception caught: " + pe.getPosition());
+            System.out.println(pe);
+        }
+
+        return null;
+    }
+
+    /**
+     *
+     * @param json
+     * @return
+     */
+    public String getNewPlanId(String json) {
+        List<String> returnList = new ArrayList<String>();
+        System.out.println("Parsing json");
+        try {
+            JSONObject rootJsonObject = (JSONObject)new JSONParser().parse(json);
+            return rootJsonObject.get("id").toString();
         } catch (ParseException pe) {
             System.out.println("Exception caught: " + pe.getPosition());
             System.out.println(pe);

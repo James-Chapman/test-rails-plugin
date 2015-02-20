@@ -53,13 +53,11 @@ public class HttpRequest extends Builder {
     private final String customHeader;
     private final String outputFile;
     private final String authentication;
-    private final Boolean returnCodeBuildRelevant;
     private final Boolean consoleLogResponseBody;
 
     @DataBoundConstructor
     public HttpRequest(String basePlanId, String getPlanUrl, String getTestsUrl, String addPlanUrl,
-                       String authentication, String customHeader, String outputFile, Boolean consoleLogResponseBody,
-                       Boolean returnCodeBuildRelevant, Boolean passBuildParameters)
+                       String authentication, String customHeader, String outputFile, Boolean consoleLogResponseBody)
                        throws URISyntaxException {
         this.basePlanId = basePlanId;
         this.getPlanUrl = getPlanUrl;
@@ -68,7 +66,6 @@ public class HttpRequest extends Builder {
         this.customHeader = customHeader;
         this.outputFile = outputFile;
         this.authentication = Util.fixEmpty(authentication);
-        this.returnCodeBuildRelevant = returnCodeBuildRelevant;
         this.consoleLogResponseBody = consoleLogResponseBody;
     }
 
@@ -100,10 +97,6 @@ public class HttpRequest extends Builder {
         return authentication;
     }
 
-    public Boolean getReturnCodeBuildRelevant() {
-        return returnCodeBuildRelevant;
-    }
-
     public Boolean getConsoleLogResponseBody() {
         return consoleLogResponseBody;
     }
@@ -119,15 +112,18 @@ public class HttpRequest extends Builder {
         final SystemDefaultHttpClient httpclient = new SystemDefaultHttpClient();
 
         logger.println("Parameters: ");
+
         final EnvVars envVars = build.getEnvironment(listener);
         //final List<NameValuePair> params = createParameters(build, logger, envVars);
-        final HttpClientUtil clientUtil = new HttpClientUtil();
-
-        // If configured, set the file to write HTTP request data output to
-        if(outputFile != null && !outputFile.isEmpty()) {
-            FilePath outputFilePath = build.getWorkspace().child(outputFile);
-            clientUtil.setOutputFile(outputFilePath);
+        String planId = null;
+        if (basePlanId.startsWith("${")) {
+            planId = envVars.get(basePlanId.substring(2, basePlanId.length() -1));
         }
+        else {
+            planId = basePlanId;
+        }
+
+        final HttpClientUtil clientUtil = new HttpClientUtil();
 
         // Boolean value that determines overall success of creating a new Test Rails Test Plan
 	    boolean success = true;
@@ -136,7 +132,7 @@ public class HttpRequest extends Builder {
         final TestRailJsonParser testRailJsonParser = new TestRailJsonParser();
 
         // Do the first HTTP GET to .../get_plan
-        String getPlanQueryUrl = getPlanUrl + "/" + basePlanId;
+        String getPlanQueryUrl = getPlanUrl + "/" + planId;
         logger.println(String.format("get_plan API URL: %s", getPlanQueryUrl));
         final String httpRespGetPlan = clientUtil.executeGet(httpclient, null, customHeader, getPlanQueryUrl, logger, consoleLogResponseBody);
         if(httpRespGetPlan == null || httpRespGetPlan.isEmpty()) {
@@ -169,14 +165,19 @@ public class HttpRequest extends Builder {
             e.printStackTrace();
         }
 
-        logger.println("\n\n\n NEW TEST PLAN \n" + newTestPlan);
+        logger.println("\nNEW TEST PLAN\n" + newTestPlan);
 
         // Do the HTTP POST to .../new_plan
         String projectId = testRailJsonParser.getProjectId(httpRespGetPlan);
         String addPlanQueryUrl = addPlanUrl + "/" + projectId;
         logger.println(String.format("add_plan API URL: %s", addPlanQueryUrl));
-        final int httpRespNewPlan = clientUtil.executePost(httpclient, authentication, customHeader, addPlanQueryUrl, logger, newTestPlan);
-        if(httpRespNewPlan != 200) {
+        final String httpRespNewPlan = clientUtil.executePost(httpclient, authentication, customHeader, addPlanQueryUrl, logger, newTestPlan, consoleLogResponseBody);
+        if(httpRespNewPlan != null && !httpRespNewPlan.isEmpty()) {
+            FilePath outputFilePath = build.getWorkspace().child(outputFile);
+            String newPlanId = testRailJsonParser.getNewPlanId(httpRespNewPlan);
+            outputFilePath.write().write(newPlanId.getBytes());
+        }
+        else {
             success = false;
         }
 

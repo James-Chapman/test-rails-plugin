@@ -25,16 +25,6 @@ import org.apache.http.util.EntityUtils;
  */
 public class HttpClientUtil {
 
-    private FilePath outputFilePath;
-
-    public String getOutputFile() {
-        return outputFilePath.getName();
-    }
-
-    public void setOutputFile(FilePath filePath) {
-        this.outputFilePath = filePath;
-    }
-
     private HttpEntity makeEntity(List<NameValuePair> params) throws
             UnsupportedEncodingException {
         return new UrlEncodedFormEntity(params);
@@ -65,7 +55,6 @@ public class HttpClientUtil {
                 if (consolLogResponseBody) {
                     logger.println("Response: \n" + returnData);
                 }
-                outputFilePath.write().write(returnData.getBytes());
                 EntityUtils.consume(httpResponse.getEntity());
             }
 
@@ -79,10 +68,10 @@ public class HttpClientUtil {
     }
 
 
-    public int executePost(DefaultHttpClient httpClient, String authentication, String customHeader, String postUrl,
-                             PrintStream logger, String postContent) throws IOException, InterruptedException {
+    public String executePost(DefaultHttpClient httpClient, String authentication, String customHeader, String postUrl,
+                             PrintStream logger, String postContent, boolean consolLogResponseBody) throws IOException, InterruptedException {
 
-        int status = 0;
+        String returnData = null;
         try {
             URI uri = new URI(postUrl);
             doSecurity(httpClient, uri);
@@ -98,9 +87,14 @@ public class HttpClientUtil {
                 request.addHeader(parts[0], parts[1]);
             }
             request.setEntity(params);
-            HttpResponse response = httpClient.execute(request);
-            logger.println("HTTP response: " + response.toString());
-            status = response.getStatusLine().getStatusCode();
+            HttpResponse httpResponse = httpClient.execute(request);
+            logger.println("HTTP response: " + httpResponse.toString());
+            if (httpResponse.getStatusLine().getStatusCode() == 200) {
+                returnData = EntityUtils.toString(httpResponse.getEntity());
+                if (consolLogResponseBody) {
+                    logger.println("Response: \n" + returnData);
+                }
+            }
         } catch (Exception ex) {
             logger.println("Caught exception.. ." + ex.getMessage());
             logger.println(ex.getStackTrace().toString());
@@ -108,7 +102,7 @@ public class HttpClientUtil {
             httpClient.getConnectionManager().shutdown();
         }
 
-        return status;
+        return returnData;
     }
 
     private void doSecurity(DefaultHttpClient httpClient, URI uri) throws IOException {
